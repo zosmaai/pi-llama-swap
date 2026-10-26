@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { defaultConfig, mergeConfig, parsePortArg, parseUrlArg } from "./url.js";
-import type { LlamaSwapConfig } from "./types.js";
+import type { LlamaSwapConfig, ThinkingFormat } from "./types.js";
 
 const CONFIG_FILENAME = "pi-llama-swap.json";
 
@@ -67,10 +67,11 @@ function normalizeRaw(raw: Partial<LlamaSwapConfig>): Partial<LlamaSwapConfig> {
 		}
 	}
 	if (raw.thinkingOverrides && typeof raw.thinkingOverrides === "object") {
-		const overrides: Record<string, string> = {};
+		const overrides: Record<string, ThinkingFormat> = {};
 		for (const [model, format] of Object.entries(raw.thinkingOverrides)) {
 			if (typeof format === "string" && format.trim()) {
-				overrides[model] = format.trim();
+				// Trust boundary: JSON config; pi rejects unknown formats at request time.
+				overrides[model] = format.trim() as ThinkingFormat;
 			}
 		}
 		if (Object.keys(overrides).length > 0) {

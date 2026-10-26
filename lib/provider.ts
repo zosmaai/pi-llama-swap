@@ -7,7 +7,7 @@ import type { ExtensionAPI, ProviderModelConfig } from "@earendil-works/pi-codin
 import { buildModelLimits, resolveContextWindow, resolveMaxTokens } from "./context.js";
 import { fetchModels, LlamaSwapClientError } from "./client.js";
 import { buildBaseUrl } from "./url.js";
-import type { LlamaSwapConfig, OpenAIModelEntry, RefreshResult } from "./types.js";
+import type { LlamaSwapConfig, OpenAIModelEntry, RefreshResult, ThinkingFormat } from "./types.js";
 
 export const PROVIDER_ID = "llama-swap";
 
@@ -31,7 +31,7 @@ export function mapOpenAIModelsToPi(
 	entries: OpenAIModelEntry[],
 	contextByModel: Map<string, number>,
 	maxTokensByModel: Map<string, number>,
-	thinkingOverrides?: Record<string, string>,
+	thinkingOverrides?: Record<string, ThinkingFormat>,
 ): ProviderModelConfig[] {
 	return entries.map((model) => {
 		const contextWindow = resolveContextWindow(model.id, contextByModel);

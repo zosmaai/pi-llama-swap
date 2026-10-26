@@ -25,7 +25,7 @@ export interface LlamaSwapConfig {
 	 *
 	 * vLLM ignores `reasoning_effort`, so vLLM-backed models must set `qwen`.
 	 */
-	thinkingOverrides?: Record<string, string>;
+	thinkingOverrides?: Record<string, ThinkingFormat>;
 	/**
 	 * Per-model max output token overrides (model id -> max_tokens).
 	 * Used when the server's /v1/models metadata omits `max_tokens`
@@ -34,6 +34,23 @@ export interface LlamaSwapConfig {
 	 */
 	maxTokensOverrides?: Record<string, number>;
 }
+
+/**
+ * pi `compat.thinkingFormat` values (mirrors pi-ai Compat type; not exported
+ * from the pi-coding-agent root, so declared locally).
+ */
+export type ThinkingFormat =
+	| "openai"
+	| "openrouter"
+	| "deepseek"
+	| "together"
+	| "baseten"
+	| "zai"
+	| "qwen"
+	| "chat-template"
+	| "qwen-chat-template"
+	| "string-thinking"
+	| "ant-ling";
 
 /** OpenAI-compatible model entry from GET /v1/models. */
 export interface OpenAIModelEntry {
