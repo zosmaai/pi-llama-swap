@@ -2,7 +2,7 @@
  * URL parsing and base URL construction for llama-swap endpoints.
  */
 
-import type { ServerConfig } from "./types.js";
+import type { ServerConfig, ServerEntry } from "./types.js";
 
 const DEFAULT_ORIGIN = "http://127.0.0.1";
 const DEFAULT_PORT = 8080;
@@ -128,8 +128,15 @@ export function parsePortArg(arg: string): number {
  * @param partial - Fields to update.
  * @returns New config object.
  */
-export function mergeConfig(current: ServerConfig, partial: Partial<ServerConfig>): ServerConfig {
+export function mergeConfig(
+	current: ServerConfig | ServerEntry,
+	partial: Partial<ServerConfig | ServerEntry>,
+): ServerConfig | ServerEntry {
+	const partialName = "name" in partial ? partial.name : undefined;
+	const currentName = "name" in current ? current.name : undefined;
+	const mergedName = partialName ?? currentName;
 	return {
+		...(mergedName !== undefined ? { name: mergedName } : {}),
 		origin: partial.origin ?? current.origin,
 		port: partial.port ?? current.port,
 		basePath: partial.basePath ?? current.basePath,
