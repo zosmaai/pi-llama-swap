@@ -7,9 +7,19 @@ import type { ExtensionAPI, ProviderModelConfig } from "@earendil-works/pi-codin
 import { buildModelLimits, resolveContextWindow, resolveMaxTokens } from "./context.js";
 import { fetchModels, LlamaSwapClientError } from "./client.js";
 import { buildBaseUrl } from "./url.js";
-import type { LlamaSwapConfig, OpenAIModelEntry, RefreshResult, ThinkingFormat } from "./types.js";
+import type { ServerConfig, OpenAIModelEntry, RefreshResult, ThinkingFormat } from "./types.js";
 
 export const PROVIDER_ID = "llama-swap";
+
+/**
+ * Provider id for a server. The default server keeps the legacy `llama-swap`;
+ * named servers become `llama-swap-<name>`.
+ * @param name - Server name (`undefined` = default server).
+ * @returns Provider id to register under.
+ */
+export function providerIdFor(name?: string): string {
+	return name ? `${PROVIDER_ID}-${name}` : PROVIDER_ID;
+}
 
 /**
  * Placeholder apiKey so pi lists models when llama-swap has no apiKeys.
@@ -17,8 +27,8 @@ export const PROVIDER_ID = "llama-swap";
  */
 export const NO_AUTH_API_KEY_PLACEHOLDER = "local-no-auth";
 
-/** Whether a successful provider registration has occurred this session. */
-let hasRegisteredProvider = false;
+/** Provider ids registered successfully this session (for re-registration on refresh). */
+const registeredProviderIds = new Set<string>();
 
 /**
  * Maps OpenAI model entries to pi provider model definitions.
@@ -96,7 +106,8 @@ export function mapOpenAIModelsToPi(
  */
 export function registerLlamaSwapProvider(
 	pi: ExtensionAPI,
-	config: LlamaSwapConfig,
+	providerId: string,
+	config: ServerConfig,
 	models: ProviderModelConfig[],
 ): void {
 	const baseUrl = buildBaseUrl(config);
@@ -114,8 +125,8 @@ export function registerLlamaSwapProvider(
 				: {}),
 	};
 
-	pi.registerProvider(PROVIDER_ID, providerConfig);
-	hasRegisteredProvider = true;
+	pi.registerProvider(providerId, providerConfig);
+	registeredProviderIds.add(providerId);
 }
 
 /**
@@ -128,7 +139,8 @@ export function registerLlamaSwapProvider(
  */
 export async function refreshProvider(
 	pi: ExtensionAPI,
-	config: LlamaSwapConfig,
+	providerId: string,
+	config: ServerConfig,
 	options?: { isInitial?: boolean },
 ): Promise<RefreshResult> {
 	const baseUrl = buildBaseUrl(config);
@@ -145,20 +157,20 @@ export async function refreshProvider(
 		}
 		const models = mapOpenAIModelsToPi(entries, contextByModel, maxTokensByModel, config.thinkingOverrides);
 
-		if (hasRegisteredProvider) {
-			pi.unregisterProvider(PROVIDER_ID);
+		if (registeredProviderIds.has(providerId)) {
+			pi.unregisterProvider(providerId);
 		}
-		registerLlamaSwapProvider(pi, config, models);
+		registerLlamaSwapProvider(pi, providerId, config, models);
 
-		return { baseUrl, modelCount: models.length };
+		return { providerId, baseUrl, modelCount: models.length };
 	} catch (err) {
 		const message = err instanceof LlamaSwapClientError ? err.message : err instanceof Error ? err.message : String(err);
 
 		if (options?.isInitial) {
-			registerLlamaSwapProvider(pi, config, []);
-			return { baseUrl, modelCount: 0, error: message };
+			registerLlamaSwapProvider(pi, providerId, config, []);
+			return { providerId, baseUrl, modelCount: 0, error: message };
 		}
 
-		return { baseUrl, modelCount: 0, error: message };
+		return { providerId, baseUrl, modelCount: 0, error: message };
 	}
 }

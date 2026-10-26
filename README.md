@@ -76,6 +76,49 @@ Create `~/.pi/agent/pi-llama-swap.json` to override defaults:
 | `apiKey` | Bearer token when llama-swap uses `apiKeys` |
 | `contextOverrides` | Per-model context overrides (model id → tokens). Use `/llama-swap-set-context-length` instead of editing manually. |
 
+### Multiple llama-swap servers
+
+Top-level fields configure the **default** server, which keeps the provider id
+`llama-swap` (all existing model refs like `llama-swap/my-model` stay valid).
+Add a `servers` array to expose additional llama-swap instances at the same
+time; each is registered as its own provider `llama-swap-<name>`:
+
+```json
+{
+  "origin": "http://cachyos",
+  "port": 8001,
+  "contextOverrides": { "zorro-davidau-3.8-flash-next": 262144 },
+  "servers": [
+    {
+      "name": "devserver",
+      "origin": "http://devserver",
+      "port": 8001,
+      "thinkingOverrides": { "ornith-1.5-35b-a3b-vision": "openai" }
+    },
+    {
+      "name": "local",
+      "origin": "http://127.0.0.1",
+      "port": 8001
+    }
+  ]
+}
+```
+
+- Provider ids: default → `llama-swap`; named servers → `llama-swap-devserver`,
+  `llama-swap-local`. Pick them in `/model` (model ids are namespaced by
+  provider, so identical model ids on two servers do not collide).
+- Each server entry accepts the same fields as the top level
+  (`origin`, `port`, `basePath`, `apiKey`, `contextOverrides`,
+  `thinkingOverrides`, `maxTokensOverrides`); missing fields fall back to the
+  package defaults, not to the default server's values.
+- `name` must match `[a-z0-9-]` (no spaces); `default` is reserved.
+- `LLAMA_SWAP_URL` / `LLAMA_SWAP_PORT` / `LLAMA_SWAP_API_KEY` env vars override
+  the **default** server only.
+- `/llama-swap-set-context-length` writes the override into the matching
+  server's section automatically based on the currently selected provider.
+- A server that is unreachable at startup registers empty and warns; the
+  others still load. Restart pi to retry discovery.
+
 Load order: **defaults → `~/.pi/agent/pi-llama-swap.json` → environment variables**.
 
 ### Context window (per model)

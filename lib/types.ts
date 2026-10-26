@@ -2,8 +2,8 @@
  * Shared types for the pi llama-swap extension.
  */
 
-/** Persisted connection settings for llama-swap. */
-export interface LlamaSwapConfig {
+/** Persisted connection settings for one llama-swap server. */
+export interface ServerConfig {
 	/** Origin without path, e.g. `http://127.0.0.1`. */
 	origin: string;
 	/** TCP port (1–65535). */
@@ -33,6 +33,30 @@ export interface LlamaSwapConfig {
 	 * it pi caps output at 8192.
 	 */
 	maxTokensOverrides?: Record<string, number>;
+}
+
+/** One entry in the multi-server `servers` config array. */
+export interface ServerEntry extends ServerConfig {
+	/** Short unique name; provider id becomes `llama-swap-<name>`. */
+	name: string;
+}
+
+/**
+ * Top-level config shape as persisted in `~/.pi/agent/pi-llama-swap.json`.
+ * Single-server fields (`origin`, `port`, ...) describe the DEFAULT server,
+ * which keeps the legacy provider id `llama-swap`. `servers` adds further
+ * llama-swap instances registered as `llama-swap-<name>`.
+ */
+export interface LlamaSwapFileConfig extends ServerConfig {
+	servers?: ServerEntry[];
+}
+
+/** Resolved runtime view: default server plus named extra servers. */
+export interface ResolvedConfig {
+	/** Default server (provider id `llama-swap`). */
+	defaultServer: ServerConfig;
+	/** Extra named servers (provider ids `llama-swap-<name>`). */
+	servers: ServerEntry[];
 }
 
 /**
@@ -65,8 +89,9 @@ export interface OpenAIModelsListResponse {
 	data: OpenAIModelEntry[];
 }
 
-/** Result of a provider refresh attempt. */
+/** Result of a provider refresh attempt for one server. */
 export interface RefreshResult {
+	providerId: string;
 	baseUrl: string;
 	modelCount: number;
 	error?: string;

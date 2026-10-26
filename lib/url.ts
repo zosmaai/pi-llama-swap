@@ -2,7 +2,7 @@
  * URL parsing and base URL construction for llama-swap endpoints.
  */
 
-import type { LlamaSwapConfig } from "./types.js";
+import type { ServerConfig } from "./types.js";
 
 const DEFAULT_ORIGIN = "http://127.0.0.1";
 const DEFAULT_PORT = 8080;
@@ -12,7 +12,7 @@ const DEFAULT_BASE_PATH = "/v1";
  * Returns default llama-swap connection settings.
  * @returns Fresh default config object.
  */
-export function defaultConfig(): LlamaSwapConfig {
+export function defaultConfig(): ServerConfig {
 	return { origin: DEFAULT_ORIGIN, port: DEFAULT_PORT, basePath: DEFAULT_BASE_PATH };
 }
 
@@ -37,7 +37,7 @@ export function normalizeBasePath(pathname: string): string {
  * @param config - Connection settings.
  * @returns Root server URL for endpoints like `/running`.
  */
-export function buildServerOrigin(config: LlamaSwapConfig): string {
+export function buildServerOrigin(config: ServerConfig): string {
 	const origin = config.origin.includes("://") ? config.origin : `http://${config.origin}`;
 	const url = new URL(origin);
 	url.port = String(config.port);
@@ -52,7 +52,7 @@ export function buildServerOrigin(config: LlamaSwapConfig): string {
  * @param config - Connection settings with origin, port, and optional basePath.
  * @returns Normalized base URL without trailing slash.
  */
-export function buildBaseUrl(config: LlamaSwapConfig): string {
+export function buildBaseUrl(config: ServerConfig): string {
 	const origin = config.origin.includes("://") ? config.origin : `http://${config.origin}`;
 	const url = new URL(origin);
 	url.port = String(config.port);
@@ -128,7 +128,7 @@ export function parsePortArg(arg: string): number {
  * @param partial - Fields to update.
  * @returns New config object.
  */
-export function mergeConfig(current: LlamaSwapConfig, partial: Partial<LlamaSwapConfig>): LlamaSwapConfig {
+export function mergeConfig(current: ServerConfig, partial: Partial<ServerConfig>): ServerConfig {
 	return {
 		origin: partial.origin ?? current.origin,
 		port: partial.port ?? current.port,
