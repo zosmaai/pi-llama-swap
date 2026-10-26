@@ -66,6 +66,28 @@ function normalizeRaw(raw: Partial<LlamaSwapConfig>): Partial<LlamaSwapConfig> {
 			out.contextOverrides = overrides;
 		}
 	}
+	if (raw.thinkingOverrides && typeof raw.thinkingOverrides === "object") {
+		const overrides: Record<string, string> = {};
+		for (const [model, format] of Object.entries(raw.thinkingOverrides)) {
+			if (typeof format === "string" && format.trim()) {
+				overrides[model] = format.trim();
+			}
+		}
+		if (Object.keys(overrides).length > 0) {
+			out.thinkingOverrides = overrides;
+		}
+	}
+	if (raw.maxTokensOverrides && typeof raw.maxTokensOverrides === "object") {
+		const overrides: Record<string, number> = {};
+		for (const [model, tokens] of Object.entries(raw.maxTokensOverrides)) {
+			if (typeof tokens === "number" && Number.isInteger(tokens) && tokens > 0) {
+				overrides[model] = tokens;
+			}
+		}
+		if (Object.keys(overrides).length > 0) {
+			out.maxTokensOverrides = overrides;
+		}
+	}
 	return out;
 }
 

@@ -14,6 +14,25 @@ export interface LlamaSwapConfig {
 	apiKey?: string;
 	/** Per-model context window overrides (model id -> tokens). */
 	contextOverrides?: Record<string, number>;
+	/**
+	 * Per-model pi `thinkingFormat` overrides (model id -> thinkingFormat).
+	 *
+	 * Controls how pi sends thinking to the backend:
+	 * - `qwen`            -> vLLM-compatible `enable_thinking` (what this box's
+	 *                        vLLM endpoint understands).
+	 * - (unset)           -> package default: `reasoning_effort`, intended for
+	 *                        llama.cpp endpoints.
+	 *
+	 * vLLM ignores `reasoning_effort`, so vLLM-backed models must set `qwen`.
+	 */
+	thinkingOverrides?: Record<string, string>;
+	/**
+	 * Per-model max output token overrides (model id -> max_tokens).
+	 * Used when the server's /v1/models metadata omits `max_tokens`
+	 * (e.g. llama.cpp/EXL profiles report only context_length); without
+	 * it pi caps output at 8192.
+	 */
+	maxTokensOverrides?: Record<string, number>;
 }
 
 /** OpenAI-compatible model entry from GET /v1/models. */

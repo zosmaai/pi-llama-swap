@@ -31,21 +31,60 @@ export function mapOpenAIModelsToPi(
 	entries: OpenAIModelEntry[],
 	contextByModel: Map<string, number>,
 	maxTokensByModel: Map<string, number>,
+	thinkingOverrides?: Record<string, string>,
 ): ProviderModelConfig[] {
 	return entries.map((model) => {
 		const contextWindow = resolveContextWindow(model.id, contextByModel);
 		const maxTokens = resolveMaxTokens(model.id, maxTokensByModel, contextWindow);
 		const name = typeof model.name === "string" && model.name.length > 0 ? model.name : model.id;
 
-		return {
+		const cfg: ProviderModelConfig = {
 			id: model.id,
 			name,
-			reasoning: false,
+			// Enable reasoning/thinking: exposes the thinking cycle
+			// (app.thinking.cycle) in the TUI.
+			reasoning: true,
+			// Map pi thinking levels onto `reasoning_effort` values the backend
+			// accepts. Levels mapped to null are HIDDEN from the pi thinking
+			// cycle (pi-ai getSupportedThinkingLevels treats null as unsupported;
+			// xhigh/max are also hidden when the entry is missing).
+			// The Qwen3.8 Strata templates (DavidAU + turboderp) accept:
+			// none (thinking off), low, medium, xhigh -- so minimal, high and
+			// max are null instead of remapped, and never appear in /thinking.
+			thinkingLevelMap: {
+				off: "none", // thinking off: sends reasoning_effort=none under thinkingFormat=openai; never sent under qwen (enable_thinking=false)
+				minimal: null,
+				low: "low",
+				medium: "medium",
+				high: null,
+				xhigh: "xhigh",
+				max: null,
+			},
+			// vLLM and TabbyAPI both accept a flat top-level `enable_thinking`, and both
+			// need it: vLLM ignores a bare `reasoning_effort` entirely, while TabbyAPI
+			// forwards it straight to a template that rejects most values. Sending both
+			// keeps effort granularity AND gives a real off switch.
+			compat: {
+				supportsReasoningEffort: true,
+				thinkingFormat: "qwen",
+			},
 			input: ["text", "image"] as ("text" | "image")[],
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 			contextWindow,
 			maxTokens,
 		};
+
+		// Per-model override: when set, tell pi to send thinking using the
+		// vLLM-compatible `enable_thinking` format (`qwen`) instead of the
+		// llama.cpp default `reasoning_effort`. vLLM ignores `reasoning_effort`,
+		// so vLLM-backed models MUST set this to "qwen".
+		const override = thinkingOverrides?.[model.id];
+		if (override) {
+			cfg.compat = { ...(cfg.compat ?? {}), thinkingFormat: override };
+			console.warn(`[llama-swap] model ${model.id}: thinkingFormat override applied -> ${override} (sends enable_thinking to vLLM)`);
+		}
+
+		return cfg;
 	});
 }
 
@@ -97,7 +136,14 @@ export async function refreshProvider(
 	try {
 		const entries = await fetchModels(baseUrl, config.apiKey);
 		const { contextByModel, maxTokensByModel } = await buildModelLimits(entries, config, config.contextOverrides);
-		const models = mapOpenAIModelsToPi(entries, contextByModel, maxTokensByModel);
+		// User maxTokensOverrides beat server-reported max_tokens (llama.cpp/EXL
+		// profiles often omit it; default fallback is 8192).
+		if (config.maxTokensOverrides) {
+			for (const [id, tokens] of Object.entries(config.maxTokensOverrides)) {
+				maxTokensByModel.set(id, tokens);
+			}
+		}
+		const models = mapOpenAIModelsToPi(entries, contextByModel, maxTokensByModel, config.thinkingOverrides);
 
 		if (hasRegisteredProvider) {
 			pi.unregisterProvider(PROVIDER_ID);
